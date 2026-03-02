@@ -132,7 +132,7 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                       ),
                       child: Center(
                         child: Text(
-                          'ADD $totalSelected WORKOUT${totalSelected == 1 ? '' : 'S'}',
+                          'ADD $totalSelected EXERCISE${totalSelected == 1 ? '' : 'S'}',
                           style: TextStyle(
                             color: totalSelected > 0
                                 ? Colors.black
@@ -190,104 +190,73 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
 
   Widget _buildExerciseItem(
       BuildContext context, Exercise exercise, WorkoutProvider provider) {
-    final count = provider.getExerciseCount(exercise.id);
+    final isSelected = provider.getExerciseCount(exercise.id) > 0;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: ColossusTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(8),
-        border: count > 0
-            ? Border.all(color: ColossusTheme.primaryColor, width: 1)
-            : null,
-      ),
-      child: Row(
-        children: [
-          // Exercise info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  exercise.name,
-                  style: const TextStyle(
-                    color: ColossusTheme.textPrimary,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                  ),
-                ),
-                if (exercise.muscleGroup != null)
+    return GestureDetector(
+      onTap: () {
+        if (isSelected) {
+          provider.decrementExercise(exercise.id);
+        } else {
+          provider.incrementExercise(exercise.id);
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: ColossusTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(8),
+          border: isSelected
+              ? Border.all(color: ColossusTheme.primaryColor, width: 1)
+              : null,
+        ),
+        child: Row(
+          children: [
+            // Exercise info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    exercise.muscleGroup!,
+                    exercise.name,
                     style: const TextStyle(
-                      color: ColossusTheme.textSecondary,
-                      fontSize: 11,
+                      color: ColossusTheme.textPrimary,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
                     ),
                   ),
-              ],
+                  if (exercise.muscleGroup != null)
+                    Text(
+                      exercise.muscleGroup!,
+                      style: const TextStyle(
+                        color: ColossusTheme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
 
-          // Counter controls
-          Row(
-            children: [
-              // Decrement
-              GestureDetector(
-                onTap: count > 0
-                    ? () => provider.decrementExercise(exercise.id)
-                    : null,
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: count > 0
-                        ? ColossusTheme.primaryColor
-                        : Colors.grey.shade700,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(
-                    Icons.remove,
-                    color: count > 0 ? Colors.black : Colors.white38,
-                    size: 18,
-                  ),
+            // Toggle checkbox
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? ColossusTheme.primaryColor
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color:
+                      isSelected ? ColossusTheme.primaryColor : Colors.white24,
                 ),
               ),
-
-              // Count
-              Container(
-                width: 36,
-                alignment: Alignment.center,
-                child: Text(
-                  '$count',
-                  style: const TextStyle(
-                    color: ColossusTheme.textPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-
-              // Increment
-              GestureDetector(
-                onTap: () => provider.incrementExercise(exercise.id),
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: ColossusTheme.primaryColor,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Icon(
-                    Icons.add,
-                    color: Colors.black,
-                    size: 18,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+              child: isSelected
+                  ? const Icon(Icons.check, color: Colors.black, size: 18)
+                  : null,
+            ),
+          ],
+        ),
       ),
     );
   }

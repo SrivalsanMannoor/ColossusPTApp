@@ -1,5 +1,5 @@
 import 'package:colossus_pt/providers/workout_provider.dart';
-import 'package:colossus_pt/screens/login_screen.dart';
+import 'package:colossus_pt/screens/home_screen.dart';
 import 'package:colossus_pt/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -22,7 +22,7 @@ class ColossusApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Colossus PT',
         theme: ColossusTheme.darkTheme,
-        home: const LoginScreen(),
+        home: const HomeScreen(),
         debugShowCheckedModeBanner: false,
       ),
     );

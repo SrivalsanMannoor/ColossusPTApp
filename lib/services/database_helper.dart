@@ -22,8 +22,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -43,9 +44,20 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         exercises_json TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'my_own',
+        category TEXT,
         created_at TEXT NOT NULL
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add type and category columns for v2
+      await db.execute(
+          "ALTER TABLE saved_workouts ADD COLUMN type TEXT NOT NULL DEFAULT 'my_own'");
+      await db.execute('ALTER TABLE saved_workouts ADD COLUMN category TEXT');
+    }
   }
 
   // ── Workout History ──
@@ -94,14 +106,20 @@ class DatabaseHelper {
   // ── Saved Custom Workouts ──
 
   /// Save a custom workout with its exercises as JSON
+  /// [type] is either 'customised' (modified preset) or 'my_own' (built from scratch)
+  /// [category] is the workout category (e.g., 'Full Body', 'Upper Body')
   Future<int> saveCustomWorkout(
     String name,
-    List<Map<String, dynamic>> exercises,
-  ) async {
+    List<Map<String, dynamic>> exercises, {
+    String type = 'my_own',
+    String? category,
+  }) async {
     final db = await database;
     return await db.insert('saved_workouts', {
       'name': name,
       'exercises_json': jsonEncode(exercises),
+      'type': type,
+      'category': category,
       'created_at': DateTime.now().toIso8601String(),
     });
   }

@@ -1,9 +1,10 @@
 import 'package:colossus_pt/screens/exercise_library_screen.dart';
+import 'package:colossus_pt/screens/my_workouts_screen.dart';
 import 'package:colossus_pt/screens/workout_selection_screen.dart';
 import 'package:colossus_pt/theme.dart';
 import 'package:flutter/material.dart';
 
-/// Screen 1: Workout Home with Choose/Build options
+/// Screen 1: Workout Home with Choose/Build/My Workouts options
 class WorkoutHomeScreen extends StatelessWidget {
   const WorkoutHomeScreen({super.key});
 
@@ -17,9 +18,7 @@ class WorkoutHomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
-            onPressed: () {
-              // Settings navigation
-            },
+            onPressed: () {},
           ),
         ],
       ),
@@ -73,6 +72,22 @@ class WorkoutHomeScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
+            // My Workouts Button
+            _buildSecondaryButton(
+              context,
+              'MY\nWORKOUTS',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyWorkoutsScreen(),
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 16),
+
             // Build My Own Workout Button
             _buildSecondaryButton(
               context,
@@ -99,7 +114,7 @@ class WorkoutHomeScreen extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
         decoration: BoxDecoration(
           color: ColossusTheme.primaryColor,
           borderRadius: BorderRadius.circular(12),
@@ -121,26 +136,35 @@ class WorkoutHomeScreen extends StatelessWidget {
   }
 
   Widget _buildSecondaryButton(BuildContext context, String text,
-      {required VoidCallback onTap}) {
+      {required VoidCallback onTap, IconData? icon}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
         decoration: BoxDecoration(
           color: ColossusTheme.surfaceColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white24),
         ),
         child: Center(
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: ColossusTheme.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              height: 1.2,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, color: ColossusTheme.primaryColor, size: 22),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: ColossusTheme.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  height: 1.2,
+                ),
+              ),
+            ],
           ),
         ),
       ),

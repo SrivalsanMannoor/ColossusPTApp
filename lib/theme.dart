@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ColossusTheme {
-  static const Color primaryColor = Color(0xFF4A90FF);
-  static const Color gradientStart = Color(0xFF1A73E8);
-  static const Color gradientEnd = Color(0xFF6DD5FA);
+  static const Color primaryColor = Color(0xFFFFB800);
+  static const Color gradientStart = Color(0xFFE8A000);
+  static const Color gradientEnd = Color(0xFFFFD54F);
   static const Color backgroundColor = Color(0xFF000000);
   static const Color surfaceColor = Color(0xFF1E1E1E);
   static const Color textPrimary = Color(0xFFFFFFFF);

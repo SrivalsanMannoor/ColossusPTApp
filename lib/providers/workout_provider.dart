@@ -91,7 +91,7 @@ class WorkoutProvider extends ChangeNotifier {
   }
 
   int get totalSelectedExercises =>
-      _exerciseSelections.values.fold(0, (a, b) => a + b);
+      _exerciseSelections.values.where((v) => v > 0).length;
 
   // ── Database Initialization ──
 
@@ -131,7 +131,12 @@ class WorkoutProvider extends ChangeNotifier {
   // ── Save Custom Workout ──
 
   /// Persist the current custom workout to SQLite
-  Future<bool> saveCustomWorkoutToDB({String? name}) async {
+  /// [type] is 'customised' (modified preset) or 'my_own' (built from scratch)
+  Future<bool> saveCustomWorkoutToDB({
+    String? name,
+    String type = 'my_own',
+    String? category,
+  }) async {
     if (_customExercises.isEmpty) return false;
     final workoutName = name ?? 'Custom Workout';
     final exercisesList = _customExercises
@@ -144,7 +149,12 @@ class WorkoutProvider extends ChangeNotifier {
               'superset_group': _getSupersetGroupForIndex(we.order),
             })
         .toList();
-    await _db.saveCustomWorkout(workoutName, exercisesList);
+    await _db.saveCustomWorkout(
+      workoutName,
+      exercisesList,
+      type: type,
+      category: category,
+    );
 
     // Refresh saved workouts list
     _savedWorkouts = await _db.getSavedWorkouts();
@@ -237,15 +247,13 @@ class WorkoutProvider extends ChangeNotifier {
 
     for (final entry in _exerciseSelections.entries) {
       final exercise = ExerciseLibrary.findById(entry.key);
-      if (exercise != null) {
-        for (int i = 0; i < entry.value; i++) {
-          _customExercises.add(WorkoutExercise(
-            exercise: exercise,
-            sets: exercise.defaultSets,
-            reps: exercise.defaultReps,
-            order: order++,
-          ));
-        }
+      if (exercise != null && entry.value > 0) {
+        _customExercises.add(WorkoutExercise(
+          exercise: exercise,
+          sets: exercise.defaultSets,
+          reps: exercise.defaultReps,
+          order: order++,
+        ));
       }
     }
     notifyListeners();
@@ -267,27 +275,113 @@ class WorkoutProvider extends ChangeNotifier {
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }
-    final item = _customExercises.removeAt(oldIndex);
-    _customExercises.insert(newIndex, item);
 
-    // Update order values
-    for (int i = 0; i < _customExercises.length; i++) {
-      _customExercises[i] = _customExercises[i].copyWith(order: i);
+    // Check if the dragged item is in a superset
+    final partnerIdx = getSupersetPartner(oldIndex);
+
+    if (partnerIdx != null) {
+      // Move both superset exercises together as a group
+      final lower = oldIndex < partnerIdx ? oldIndex : partnerIdx;
+      final higher = oldIndex < partnerIdx ? partnerIdx : oldIndex;
+
+      // Remove both items (remove higher first to preserve lower index)
+      final higherItem = _customExercises.removeAt(higher);
+      final lowerItem = _customExercises.removeAt(lower);
+
+      // Calculate target insertion index after removal
+      int insertAt = newIndex;
+      // Adjust for the two removed items
+      if (newIndex > higher) {
+        insertAt -= 2;
+      } else if (newIndex > lower) {
+        insertAt -= 1;
+      }
+      if (insertAt < 0) insertAt = 0;
+      if (insertAt > _customExercises.length) {
+        insertAt = _customExercises.length;
+      }
+
+      // Insert both items at the target: lower item first, then higher item after
+      _customExercises.insert(insertAt, lowerItem);
+      _customExercises.insert(insertAt + 1, higherItem);
+
+      // Rebuild order values
+      for (int i = 0; i < _customExercises.length; i++) {
+        _customExercises[i] = _customExercises[i].copyWith(order: i);
+      }
+
+      // Rebuild superset pairs with new indices
+      _supersetPairs = _supersetPairs.map((pair) {
+        if (pair.contains(lower) && pair.contains(higher)) {
+          return [insertAt, insertAt + 1];
+        }
+        // Recalculate other pair indices based on the moves
+        return pair.map((idx) {
+          // Count how many of the removed indices were before this idx
+          int shift = 0;
+          if (lower < idx) shift++;
+          if (higher < idx) shift++;
+          int newIdx = idx - shift;
+
+          // Count how many inserted indices are at or before the new idx
+          int insertShift = 0;
+          if (insertAt <= newIdx) insertShift++;
+          if (insertAt + 1 <= newIdx + insertShift) insertShift++;
+
+          return newIdx + insertShift;
+        }).toList();
+      }).toList();
+    } else {
+      // Single item reorder (no superset)
+      final item = _customExercises.removeAt(oldIndex);
+      _customExercises.insert(newIndex, item);
+
+      // Update order values
+      for (int i = 0; i < _customExercises.length; i++) {
+        _customExercises[i] = _customExercises[i].copyWith(order: i);
+      }
+
+      // Update superset pair indices after reorder
+      _supersetPairs = _supersetPairs.map((pair) {
+        return pair.map((idx) {
+          if (idx == oldIndex) return newIndex;
+          if (oldIndex < newIndex) {
+            if (idx > oldIndex && idx <= newIndex) return idx - 1;
+          } else {
+            if (idx >= newIndex && idx < oldIndex) return idx + 1;
+          }
+          return idx;
+        }).toList();
+      }).toList();
     }
 
-    // Update superset pair indices after reorder
+    notifyListeners();
+  }
+
+  /// Reorder exercises based on a new index order (used by group-based reorder)
+  void reorderByNewOrder(List<int> newOrder) {
+    if (newOrder.length != _customExercises.length) return;
+
+    // Build a new list based on the new order
+    final newList = newOrder.map((i) => _customExercises[i]).toList();
+
+    // Build index mapping: old index -> new index
+    final indexMap = <int, int>{};
+    for (int newIdx = 0; newIdx < newOrder.length; newIdx++) {
+      indexMap[newOrder[newIdx]] = newIdx;
+    }
+
+    // Update superset pairs with new indices
     _supersetPairs = _supersetPairs.map((pair) {
-      return pair.map((idx) {
-        if (idx == oldIndex) return newIndex;
-        if (oldIndex < newIndex) {
-          if (idx > oldIndex && idx <= newIndex) return idx - 1;
-        } else {
-          if (idx >= newIndex && idx < oldIndex) return idx + 1;
-        }
-        return idx;
-      }).toList();
+      return pair.map((idx) => indexMap[idx] ?? idx).toList();
     }).toList();
 
+    // Update order values
+    for (int i = 0; i < newList.length; i++) {
+      newList[i] = newList[i].copyWith(order: i);
+    }
+
+    _customExercises = newList;
     notifyListeners();
   }
 
@@ -319,7 +413,38 @@ class WorkoutProvider extends ChangeNotifier {
       _supersetPairs.removeWhere(
         (pair) => pair.contains(indexA) || pair.contains(indexB),
       );
-      _supersetPairs.add([indexA, indexB]);
+
+      // Auto-group: move the partner so they are adjacent
+      final lower = indexA < indexB ? indexA : indexB;
+      final higher = indexA < indexB ? indexB : indexA;
+
+      if (higher != lower + 1) {
+        // Move the higher-index exercise to right after the lower one
+        final item = _customExercises.removeAt(higher);
+        final insertAt = lower + 1;
+        _customExercises.insert(insertAt, item);
+
+        // Update order values
+        for (int i = 0; i < _customExercises.length; i++) {
+          _customExercises[i] = _customExercises[i].copyWith(order: i);
+        }
+
+        // Update all existing superset pair indices after the move
+        _supersetPairs = _supersetPairs.map((pair) {
+          return pair.map((idx) {
+            if (idx == higher) return insertAt;
+            // Items between insertAt and higher shift up by 1
+            if (idx >= insertAt && idx < higher) return idx + 1;
+            return idx;
+          }).toList();
+        }).toList();
+
+        // Add the pair with updated indices
+        _supersetPairs.add([lower, lower + 1]);
+      } else {
+        // Already adjacent, just add the pair
+        _supersetPairs.add([lower, higher]);
+      }
     }
     notifyListeners();
   }
