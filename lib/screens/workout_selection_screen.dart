@@ -3,6 +3,7 @@ import 'package:colossus_pt/providers/workout_provider.dart';
 import 'package:colossus_pt/screens/exercise_config_screen.dart';
 import 'package:colossus_pt/screens/saved_workout_detail_screen.dart';
 import 'package:colossus_pt/theme.dart';
+import 'package:colossus_pt/widgets/feedback_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/workout.dart';
@@ -73,6 +74,25 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
       } catch (_) {}
 
       final savedType = saved['type'] ?? 'my_own';
+      // Only show customised workouts in Colossus Workout tab (not 'my_own')
+      if (savedType == 'my_own') continue;
+
+      // Compute "performed X days ago" from created_at
+      String performedText = '';
+      final createdAt = saved['created_at'];
+      if (createdAt != null) {
+        try {
+          final date = DateTime.parse(createdAt.toString());
+          final days = DateTime.now().difference(date).inDays;
+          if (days == 0) {
+            performedText = 'Performed today';
+          } else if (days == 1) {
+            performedText = 'Performed yesterday';
+          } else {
+            performedText = 'Performed $days days ago';
+          }
+        } catch (_) {}
+      }
 
       items.add(WorkoutItem(
         id: 'saved_${saved['id']}',
@@ -80,6 +100,7 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
         type: savedType,
         exerciseCount: exercises.length,
         savedWorkoutData: saved,
+        lastPerformedText: performedText,
       ));
     }
 
@@ -138,12 +159,23 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.pop(context),
+        leadingWidth: 96,
+        leading: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.pest_control,
+                  color: ColossusTheme.primaryColor),
+              onPressed: () =>
+                  FeedbackHelper.showFeedbackMenu(context, 'Colossus Workout'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_back_ios),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
         ),
         title: const Text(
-          'CHOOSE A WORKOUT',
+          'COLOSSUS WORKOUT',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             letterSpacing: 1,
@@ -154,49 +186,75 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
       ),
       body: Column(
         children: [
-          // Filter chips
+          // Filter and Sort buttons
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildFilterChip('All', 'all'),
-                  _buildFilterChip('Default', 'default'),
-                  _buildFilterChip('Customised', 'customised'),
-                  _buildFilterChip('My Own', 'my_own'),
-                  const SizedBox(width: 8),
-                  // Sort button
-                  GestureDetector(
-                    onTap: _showSortSheet,
+            child: Row(
+              children: [
+                // Filter button
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _showFilterSheet,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: ColossusTheme.surfaceColor,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.white24),
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.sort,
-                              color: ColossusTheme.primaryColor, size: 16),
-                          const SizedBox(width: 4),
+                          const Icon(Icons.filter_list,
+                              color: ColossusTheme.primaryColor, size: 18),
+                          const SizedBox(width: 6),
                           Text(
-                            _sortLabel,
+                            'FILTER: ${_filterLabel}',
                             style: const TextStyle(
                               color: ColossusTheme.textPrimary,
                               fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // Sort By button
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _showSortSheet,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: ColossusTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.sort,
+                              color: ColossusTheme.primaryColor, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            'SORT: ${_sortLabel}',
+                            style: const TextStyle(
+                              color: ColossusTheme.textPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -211,12 +269,13 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
                   )
                 : GridView.builder(
                     padding: const EdgeInsets.all(16),
+                    physics: const AlwaysScrollableScrollPhysics(),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
-                      childAspectRatio: 1.1,
+                      childAspectRatio: 1.0,
                     ),
                     itemCount: items.length,
                     itemBuilder: (context, index) {
@@ -227,6 +286,21 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
         ],
       ),
     );
+  }
+
+  String get _filterLabel {
+    switch (_filterType) {
+      case 'all':
+        return 'All';
+      case 'default':
+        return 'Default';
+      case 'customised':
+        return 'Customised';
+      case 'my_own':
+        return 'My Own';
+      default:
+        return 'All';
+    }
   }
 
   String get _sortLabel {
@@ -244,31 +318,60 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
     }
   }
 
-  Widget _buildFilterChip(String label, String type) {
-    final isActive = _filterType == type;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: () => setState(() => _filterType = type),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive
-                ? ColossusTheme.primaryColor
-                : ColossusTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isActive ? ColossusTheme.primaryColor : Colors.white24,
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: ColossusTheme.surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'FILTER',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildFilterOption('All', 'all'),
+                _buildFilterOption('Default', 'default'),
+                _buildFilterOption('Customised', 'customised'),
+              ],
             ),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isActive ? Colors.black : ColossusTheme.textPrimary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterOption(String label, String value) {
+    final isActive = _filterType == value;
+    return ListTile(
+      onTap: () {
+        setState(() => _filterType = value);
+        Navigator.pop(context);
+      },
+      leading: Icon(
+        isActive ? Icons.radio_button_checked : Icons.radio_button_off,
+        color:
+            isActive ? ColossusTheme.primaryColor : ColossusTheme.textSecondary,
+        size: 20,
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          color:
+              isActive ? ColossusTheme.primaryColor : ColossusTheme.textPrimary,
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
         ),
       ),
     );
@@ -341,8 +444,10 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
     Color cardColor;
     if (isLocked) {
       cardColor = const Color(0xFF4A3728);
-    } else if (isCustom) {
-      cardColor = ColossusTheme.primaryColor.withValues(alpha: 0.7);
+    } else if (item.type == 'customised') {
+      cardColor = const Color(0xFF0097B2); // teal-blue for customised
+    } else if (item.type == 'my_own') {
+      cardColor = const Color(0xFF10BB82); // green for my own
     } else {
       cardColor = ColossusTheme.primaryColor.withValues(alpha: 0.9);
     }
@@ -352,7 +457,7 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
       child: Container(
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Stack(
           children: [
@@ -410,7 +515,7 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
                     item.displayName,
                     style: TextStyle(
                       color: isLocked ? Colors.white54 : Colors.black,
-                      fontSize: isCustom ? 13 : 20,
+                      fontSize: isCustom ? 13 : 15,
                       fontWeight: FontWeight.bold,
                     ),
                     maxLines: 2,
@@ -530,26 +635,47 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
                   child: GestureDetector(
                     onTap: () {
                       Navigator.pop(ctx);
+
+                      // Build exercise list for the detail screen
+                      List<Map<String, dynamic>> exerciseList = [];
+                      String workoutName = item.displayName;
+
                       if (item.presetWorkout != null) {
                         final provider = context.read<WorkoutProvider>();
                         provider.recordWorkoutPerformed(item.presetWorkout!.id);
+                        exerciseList = item.presetWorkout!.exercises
+                            .map((e) => {
+                                  'exercise_name': e.exercise.name,
+                                  'sets': e.sets,
+                                  'reps': e.reps,
+                                  'muscleGroup': e.exercise.muscleGroup,
+                                })
+                            .toList();
+                      } else if (item.savedWorkoutData != null) {
+                        workoutName =
+                            (item.savedWorkoutData!['name'] ?? 'Custom Workout')
+                                .toString();
+                        try {
+                          final json =
+                              item.savedWorkoutData!['exercises_json'] ?? '[]';
+                          final parsed = jsonDecode(json) as List<dynamic>;
+                          exerciseList = parsed.cast<Map<String, dynamic>>();
+                        } catch (_) {}
                       }
-                      if (item.savedWorkoutData != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SavedWorkoutDetailScreen(
-                                workout: item.savedWorkoutData!),
+
+                      // Navigate to exercise list screen with BEGIN WORKOUT
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SavedWorkoutDetailScreen(
+                            workout: item.savedWorkoutData ??
+                                {
+                                  'name': workoutName,
+                                  'exercises_json': jsonEncode(exerciseList),
+                                },
                           ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Starting ${item.displayName}... 💪'),
-                            backgroundColor: ColossusTheme.primaryColor,
-                          ),
-                        );
-                      }
+                        ),
+                      );
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -573,43 +699,65 @@ class _WorkoutSelectionScreenState extends State<WorkoutSelectionScreen> {
 
                 const SizedBox(height: 12),
 
-                // EDIT WORKOUT button
-                if (item.presetWorkout != null)
-                  SizedBox(
-                    width: double.infinity,
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        final provider = context.read<WorkoutProvider>();
+                // EDIT WORKOUT button (for all workout types)
+                SizedBox(
+                  width: double.infinity,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      final provider = context.read<WorkoutProvider>();
+
+                      if (item.presetWorkout != null) {
                         provider
                             .loadPresetWorkoutForEditing(item.presetWorkout!);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ExerciseConfigScreen(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.white24),
+                      } else if (item.savedWorkoutData != null) {
+                        // Load saved workout exercises for editing
+                        try {
+                          final json =
+                              item.savedWorkoutData!['exercises_json'] ?? '[]';
+                          final parsed = jsonDecode(json) as List<dynamic>;
+                          final savedId = item.savedWorkoutData!['id'] as int?;
+                          final savedName =
+                              (item.savedWorkoutData!['name'] ?? '').toString();
+                          final savedType =
+                              (item.savedWorkoutData!['type'] ?? 'my_own')
+                                  .toString();
+                          provider.loadSavedWorkoutForEditing(
+                            parsed.cast<Map<String, dynamic>>(),
+                            savedWorkoutId: savedId,
+                            savedWorkoutName: savedName,
+                            savedWorkoutType: savedType,
+                          );
+                        } catch (_) {}
+                      }
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ExerciseConfigScreen(),
                         ),
-                        child: const Center(
-                          child: Text(
-                            'EDIT WORKOUT',
-                            style: TextStyle(
-                              color: ColossusTheme.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'EDIT WORKOUT',
+                          style: TextStyle(
+                            color: ColossusTheme.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                     ),
                   ),
+                ),
 
                 const SizedBox(height: 8),
               ],

@@ -72,7 +72,7 @@ class WorkoutExercise {
 
   const WorkoutExercise({
     required this.exercise,
-    required this.sets,
+    this.sets = 3,
     required this.reps,
     this.order = 0,
   });

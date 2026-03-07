@@ -2,6 +2,7 @@ import 'package:colossus_pt/screens/exercise_library_screen.dart';
 import 'package:colossus_pt/screens/my_workouts_screen.dart';
 import 'package:colossus_pt/screens/workout_selection_screen.dart';
 import 'package:colossus_pt/theme.dart';
+import 'package:colossus_pt/widgets/feedback_helper.dart';
 import 'package:flutter/material.dart';
 
 /// Screen 1: Workout Home with Choose/Build/My Workouts options
@@ -15,6 +16,12 @@ class WorkoutHomeScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon:
+              const Icon(Icons.pest_control, color: ColossusTheme.primaryColor),
+          onPressed: () =>
+              FeedbackHelper.showFeedbackMenu(context, 'Workout Home'),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
@@ -59,7 +66,7 @@ class WorkoutHomeScreen extends StatelessWidget {
             // Choose a Workout Button
             _buildPrimaryButton(
               context,
-              'CHOOSE\nA WORKOUT',
+              'COLOSSUS\nWORKOUT',
               onTap: () {
                 Navigator.push(
                   context,

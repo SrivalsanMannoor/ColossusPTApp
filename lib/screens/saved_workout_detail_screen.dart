@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'package:colossus_pt/screens/active_workout_screen.dart';
 import 'package:colossus_pt/theme.dart';
+import 'package:colossus_pt/widgets/feedback_helper.dart';
 import 'package:flutter/material.dart';
 
 /// Screen to show exercises from a saved custom workout
@@ -22,6 +24,21 @@ class SavedWorkoutDetailScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leadingWidth: 96,
+        leading: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.pest_control,
+                  color: ColossusTheme.primaryColor),
+              onPressed: () =>
+                  FeedbackHelper.showFeedbackMenu(context, 'Workout Detail'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_back_ios),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
         title: Text(
           name.toString().toUpperCase(),
           style: const TextStyle(
@@ -76,7 +93,7 @@ class SavedWorkoutDetailScreen extends StatelessWidget {
                   ),
                 ),
 
-                // Start button at bottom
+                // BEGIN WORKOUT button
                 SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -85,10 +102,16 @@ class SavedWorkoutDetailScreen extends StatelessWidget {
                       height: 56,
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Workout started! 💪'),
-                              backgroundColor: ColossusTheme.primaryColor,
+                          final exerciseList =
+                              exercises.cast<Map<String, dynamic>>();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ActiveWorkoutScreen.fromExerciseList(
+                                workoutName: name.toString(),
+                                exercises: exerciseList,
+                              ),
                             ),
                           );
                         },

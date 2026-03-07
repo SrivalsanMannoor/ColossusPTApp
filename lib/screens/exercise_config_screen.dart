@@ -1,7 +1,10 @@
 import 'package:colossus_pt/providers/workout_provider.dart';
 import 'package:colossus_pt/theme.dart';
+import 'package:colossus_pt/widgets/feedback_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../data/workout_data.dart';
+import '../models/exercise.dart';
 
 /// Screen 4: Exercise Configuration for custom workout
 class ExerciseConfigScreen extends StatefulWidget {
@@ -49,9 +52,20 @@ class _ExerciseConfigScreenState extends State<ExerciseConfigScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.pop(context),
+        leadingWidth: 96,
+        leading: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.pest_control,
+                  color: ColossusTheme.primaryColor),
+              onPressed: () =>
+                  FeedbackHelper.showFeedbackMenu(context, 'Configure Workout'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_back_ios),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
         ),
         title: Text(
           provider.editingWorkoutId != null
@@ -87,7 +101,7 @@ class _ExerciseConfigScreenState extends State<ExerciseConfigScreen> {
                   child: Text(
                     _supersetSelectingFor != null
                         ? 'TAP ANOTHER EXERCISE TO PAIR AS SUPERSET'
-                        : 'TAP AND HOLD TO REORDER · TAP ⚡ TO CREATE SUPERSET',
+                        : 'TAP AND HOLD TO REORDER · SWIPE LEFT DELETE · SWIPE RIGHT REPLACE',
                     style: const TextStyle(
                       color: ColossusTheme.textSecondary,
                       fontSize: 11,
@@ -118,7 +132,8 @@ class _ExerciseConfigScreenState extends State<ExerciseConfigScreen> {
                     ),
                   )
                 : ReorderableListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding:
+                        const EdgeInsets.only(left: 16, right: 16, bottom: 80),
                     itemCount: groups.length,
                     onReorder: (oldGroupIdx, newGroupIdx) {
                       _onGroupReorder(
@@ -136,27 +151,115 @@ class _ExerciseConfigScreenState extends State<ExerciseConfigScreen> {
                           provider: provider,
                         );
                       } else {
-                        // Single exercise
+                        // Single exercise — wrap in Dismissible for swipe gestures
                         final index = group[0];
                         final workoutExercise = exercises[index];
-                        return _buildExerciseConfigItem(
+                        return Dismissible(
                           key: ValueKey(
-                              workoutExercise.exercise.id + index.toString()),
-                          context: context,
-                          groupIndex: groupIdx,
-                          index: index,
-                          name: workoutExercise.exercise.name,
-                          sets: workoutExercise.sets,
-                          reps: workoutExercise.reps,
-                          provider: provider,
-                          isInSuperset: false,
-                          partnerIndex: null,
-                          isSelectingSuperset: _supersetSelectingFor != null,
-                          isSelectedForSuperset: _supersetSelectingFor == index,
+                              'dismiss_${workoutExercise.exercise.id}_$index'),
+                          confirmDismiss: (direction) async {
+                            if (direction == DismissDirection.startToEnd) {
+                              // Swipe right → Replace
+                              await _showReplaceExercisePicker(
+                                  context, provider, index);
+                              return false; // don't dismiss, just replace
+                            } else {
+                              // Swipe left → Delete
+                              provider.removeCustomExercise(index);
+                              return false;
+                            }
+                          },
+                          background: Container(
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.only(left: 20),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade700,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.swap_horiz, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text('REPLACE',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                          secondaryBackground: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 20),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade700,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text('DELETE',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
+                                SizedBox(width: 8),
+                                Icon(Icons.delete, color: Colors.white),
+                              ],
+                            ),
+                          ),
+                          child: _buildExerciseConfigItem(
+                            key: ValueKey(
+                                workoutExercise.exercise.id + index.toString()),
+                            context: context,
+                            groupIndex: groupIdx,
+                            index: index,
+                            name: workoutExercise.exercise.name,
+                            sets: workoutExercise.sets,
+                            reps: workoutExercise.reps,
+                            provider: provider,
+                            isInSuperset: false,
+                            partnerIndex: null,
+                            isSelectingSuperset: _supersetSelectingFor != null,
+                            isSelectedForSuperset:
+                                _supersetSelectingFor == index,
+                          ),
                         );
                       }
                     },
                   ),
+          ),
+
+          // ADD EXERCISE button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: GestureDetector(
+              onTap: () => _showAddExercisePicker(context, provider),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white12,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add,
+                        color: ColossusTheme.primaryColor, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'ADD EXERCISE',
+                      style: TextStyle(
+                        color: ColossusTheme.primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
 
           // Bottom action bar
@@ -198,50 +301,179 @@ class _ExerciseConfigScreenState extends State<ExerciseConfigScreen> {
                 // Save button
                 Expanded(
                   child: GestureDetector(
-                    onTap: () async {
-                      final provider = context.read<WorkoutProvider>();
-                      // Always prompt for a name
-                      final name = await _showNameDialog(context);
-                      if (name == null) return;
-                      if (!context.mounted) return;
-                      // Determine workout type
-                      final isEditing = provider.editingWorkoutId != null;
-                      final type = isEditing ? 'customised' : 'my_own';
+                    onTap: !provider.hasUnsavedChanges
+                        ? null
+                        : () async {
+                            final provider = context.read<WorkoutProvider>();
+                            final isEditingPreset =
+                                provider.editingWorkoutId != null;
+                            final isEditingSaved =
+                                provider.editingSavedWorkoutId != null;
 
-                      // Save to SQLite DB
-                      final saved = await provider.saveCustomWorkoutToDB(
-                        name: name,
-                        type: type,
-                      );
-                      if (!context.mounted) return;
-
-                      if (isEditing) {
-                        provider.clearEditingState();
-                      }
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(saved
-                              ? 'Workout "$name" saved!'
-                              : 'No exercises to save'),
-                          backgroundColor: ColossusTheme.primaryColor,
-                        ),
-                      );
-                      if (saved) {
-                        Navigator.popUntil(context, (route) => route.isFirst);
-                      }
-                    },
+                            if (isEditingSaved) {
+                              // Customised / My Own: allow update or save as new
+                              final choice = await showModalBottomSheet<String>(
+                                context: context,
+                                backgroundColor: ColossusTheme.surfaceColor,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(16)),
+                                ),
+                                builder: (ctx) => SafeArea(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text(
+                                          'SAVE WORKOUT',
+                                          style: TextStyle(
+                                            color: ColossusTheme.textPrimary,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, 'update'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  ColossusTheme.primaryColor,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 14),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'UPDATE THIS WORKOUT',
+                                              style: TextStyle(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: OutlinedButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, 'new'),
+                                            style: OutlinedButton.styleFrom(
+                                              side: const BorderSide(
+                                                  color: Colors.white24),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 14),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'SAVE AS NEW WORKOUT',
+                                              style: TextStyle(
+                                                color:
+                                                    ColossusTheme.textPrimary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                              if (choice == null || !context.mounted) return;
+                              if (choice == 'update') {
+                                final workoutName =
+                                    provider.editingSavedWorkoutName!;
+                                final originalType =
+                                    provider.editingSavedWorkoutType ??
+                                        'my_own';
+                                final saved =
+                                    await provider.updateExistingWorkoutInDB(
+                                  workoutId: provider.editingSavedWorkoutId!,
+                                  name: workoutName,
+                                  type: originalType,
+                                );
+                                if (!context.mounted) return;
+                                provider.clearEditingState();
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(SnackBar(
+                                  content: Text(saved
+                                      ? 'Workout "$workoutName" updated!'
+                                      : 'No exercises to save'),
+                                  backgroundColor: ColossusTheme.primaryColor,
+                                ));
+                                if (saved)
+                                  Navigator.popUntil(context, (r) => r.isFirst);
+                              } else {
+                                final name = await _showNameDialog(context);
+                                if (name == null || !context.mounted) return;
+                                final originalType =
+                                    provider.editingSavedWorkoutType ??
+                                        'my_own';
+                                final saved =
+                                    await provider.saveCustomWorkoutToDB(
+                                        name: name, type: originalType);
+                                if (!context.mounted) return;
+                                provider.clearEditingState();
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(SnackBar(
+                                  content: Text(saved
+                                      ? 'Workout "$name" saved!'
+                                      : 'No exercises to save'),
+                                  backgroundColor: ColossusTheme.primaryColor,
+                                ));
+                                if (saved)
+                                  Navigator.popUntil(context, (r) => r.isFirst);
+                              }
+                            } else {
+                              // Default workout (preset editing) or brand new: save as new only
+                              final name = await _showNameDialog(context);
+                              if (name == null) return;
+                              if (!context.mounted) return;
+                              final type =
+                                  isEditingPreset ? 'customised' : 'my_own';
+                              final saved =
+                                  await provider.saveCustomWorkoutToDB(
+                                      name: name, type: type);
+                              if (!context.mounted) return;
+                              if (isEditingPreset) provider.clearEditingState();
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(
+                                content: Text(saved
+                                    ? 'Workout "$name" saved!'
+                                    : 'No exercises to save'),
+                                backgroundColor: ColossusTheme.primaryColor,
+                              ));
+                              if (saved)
+                                Navigator.popUntil(context, (r) => r.isFirst);
+                            }
+                          },
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: ColossusTheme.primaryColor,
+                        color: provider.hasUnsavedChanges
+                            ? ColossusTheme.primaryColor
+                            : Colors.grey.shade700,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           'SAVE',
                           style: TextStyle(
-                            color: Colors.black,
+                            color: provider.hasUnsavedChanges
+                                ? Colors.white
+                                : Colors.grey.shade500,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -254,6 +486,147 @@ class _ExerciseConfigScreenState extends State<ExerciseConfigScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Show a picker to replace the exercise at [index]
+  Future<void> _showReplaceExercisePicker(
+      BuildContext ctx, WorkoutProvider provider, int index) async {
+    await _showExercisePicker(
+      ctx,
+      title: 'REPLACE EXERCISE',
+      onSelected: (exercise) {
+        provider.replaceCustomExercise(index, exercise);
+      },
+    );
+  }
+
+  /// Show a picker to add a new exercise at the end
+  Future<void> _showAddExercisePicker(
+      BuildContext ctx, WorkoutProvider provider) async {
+    await _showExercisePicker(
+      ctx,
+      title: 'ADD EXERCISE',
+      onSelected: (exercise) {
+        provider.addExercisesToCustom([exercise]);
+      },
+    );
+  }
+
+  /// Generic exercise picker bottom sheet
+  Future<void> _showExercisePicker(
+    BuildContext ctx, {
+    required String title,
+    required void Function(Exercise) onSelected,
+  }) async {
+    final allExercises = ExerciseLibrary.allExercises;
+    String searchQuery = '';
+
+    await showModalBottomSheet(
+      context: ctx,
+      backgroundColor: ColossusTheme.surfaceColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheetState) {
+            final filtered = searchQuery.isEmpty
+                ? allExercises
+                : allExercises
+                    .where((e) => e.name
+                        .toLowerCase()
+                        .contains(searchQuery.toLowerCase()))
+                    .toList();
+            return DraggableScrollableSheet(
+              initialChildSize: 0.75,
+              minChildSize: 0.4,
+              maxChildSize: 0.95,
+              expand: false,
+              builder: (_, scrollController) {
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade600,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              color: ColossusTheme.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            autofocus: false,
+                            style: const TextStyle(
+                                color: ColossusTheme.textPrimary),
+                            decoration: InputDecoration(
+                              hintText: 'Search exercises...',
+                              hintStyle: const TextStyle(
+                                  color: ColossusTheme.textSecondary),
+                              filled: true,
+                              fillColor: Colors.white10,
+                              prefixIcon: const Icon(Icons.search,
+                                  color: ColossusTheme.textSecondary),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: (val) =>
+                                setSheetState(() => searchQuery = val),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) {
+                          final ex = filtered[i];
+                          return ListTile(
+                            title: Text(
+                              ex.name,
+                              style: const TextStyle(
+                                  color: ColossusTheme.textPrimary,
+                                  fontSize: 13),
+                            ),
+                            subtitle: Text(
+                              ex.muscleGroup ?? ex.category ?? '',
+                              style: const TextStyle(
+                                  color: ColossusTheme.textSecondary,
+                                  fontSize: 11),
+                            ),
+                            onTap: () {
+                              onSelected(ex);
+                              Navigator.pop(sheetCtx);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 

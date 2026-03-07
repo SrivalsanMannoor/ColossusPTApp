@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -49,14 +49,37 @@ class DatabaseHelper {
         created_at TEXT NOT NULL
       )
     ''');
+
+    // Store per-exercise set logs for progress tracking
+    await db.execute('''
+      CREATE TABLE exercise_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        exercise_name TEXT NOT NULL,
+        set_number INTEGER NOT NULL,
+        weight REAL NOT NULL DEFAULT 0,
+        reps INTEGER NOT NULL DEFAULT 0,
+        logged_at TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Add type and category columns for v2
       await db.execute(
           "ALTER TABLE saved_workouts ADD COLUMN type TEXT NOT NULL DEFAULT 'my_own'");
       await db.execute('ALTER TABLE saved_workouts ADD COLUMN category TEXT');
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE exercise_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          exercise_name TEXT NOT NULL,
+          set_number INTEGER NOT NULL,
+          weight REAL NOT NULL DEFAULT 0,
+          reps INTEGER NOT NULL DEFAULT 0,
+          logged_at TEXT NOT NULL
+        )
+      ''');
     }
   }
 
@@ -124,9 +147,84 @@ class DatabaseHelper {
     });
   }
 
+  /// Update an existing saved workout by its DB ID
+  Future<int> updateCustomWorkout(
+    int id,
+    String name,
+    List<Map<String, dynamic>> exercises, {
+    String type = 'my_own',
+    String? category,
+  }) async {
+    final db = await database;
+    return await db.update(
+      'saved_workouts',
+      {
+        'name': name,
+        'exercises_json': jsonEncode(exercises),
+        'type': type,
+        'category': category,
+        'created_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   /// Get all saved custom workouts
   Future<List<Map<String, dynamic>>> getSavedWorkouts() async {
     final db = await database;
     return await db.query('saved_workouts', orderBy: 'created_at DESC');
+  }
+
+  // ── Exercise Logs ──
+
+  /// Save all sets for an exercise after completing a workout
+  Future<void> saveExerciseLog(
+    String exerciseName,
+    List<Map<String, dynamic>> sets,
+  ) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+
+    for (final set in sets) {
+      await db.insert('exercise_logs', {
+        'exercise_name': exerciseName,
+        'set_number': set['set_number'],
+        'weight': set['weight'],
+        'reps': set['reps'],
+        'logged_at': now,
+      });
+    }
+  }
+
+  /// Get the most recent log for an exercise (returns list of sets)
+  Future<List<Map<String, dynamic>>> getLastExerciseLog(
+      String exerciseName) async {
+    final db = await database;
+    // Get the latest logged_at date
+    final latest = await db.rawQuery(
+      'SELECT MAX(logged_at) as max_date FROM exercise_logs WHERE exercise_name = ?',
+      [exerciseName],
+    );
+    final maxDate = latest.isNotEmpty ? latest.first['max_date'] : null;
+    if (maxDate == null) return [];
+    return await db.query(
+      'exercise_logs',
+      where: 'exercise_name = ? AND logged_at = ?',
+      whereArgs: [exerciseName, maxDate],
+      orderBy: 'set_number ASC',
+    );
+  }
+
+  /// Get full exercise history: all logs grouped by date
+  Future<List<Map<String, dynamic>>> getExerciseHistory(
+      String exerciseName) async {
+    final db = await database;
+    return await db.query(
+      'exercise_logs',
+      where: 'exercise_name = ?',
+      whereArgs: [exerciseName],
+      orderBy: 'logged_at DESC, set_number ASC',
+    );
   }
 }

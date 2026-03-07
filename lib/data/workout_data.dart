@@ -46,7 +46,7 @@ class ExerciseLibrary {
         muscleGroup: 'Glutes / Legs',
         primaryMuscle: 'Gluteus Maximus',
         equipment: 'Trap Bar',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 8),
     Exercise(
         id: 'barbell_deadlift',
@@ -55,7 +55,7 @@ class ExerciseLibrary {
         muscleGroup: 'Glutes / Legs',
         primaryMuscle: 'Gluteus Maximus',
         equipment: 'Barbell',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 8),
     Exercise(
         id: 'barbell_romanian_deadlift',
@@ -145,7 +145,7 @@ class ExerciseLibrary {
         muscleGroup: 'Glutes / Legs',
         primaryMuscle: 'Quads',
         equipment: 'Smith Machine',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 8),
     Exercise(
         id: 'barbell_squat',
@@ -154,7 +154,7 @@ class ExerciseLibrary {
         muscleGroup: 'Glutes / Legs',
         primaryMuscle: 'Quads',
         equipment: 'Rack, Barbell',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 8),
     Exercise(
         id: 'dumbbell_plie_squat',
@@ -329,7 +329,7 @@ class ExerciseLibrary {
         muscleGroup: 'Legs',
         primaryMuscle: 'Calves',
         equipment: 'Dumbbell',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 15),
     Exercise(
         id: 'smith_machine_standing_calf_raise',
@@ -338,7 +338,7 @@ class ExerciseLibrary {
         muscleGroup: 'Legs',
         primaryMuscle: 'Calves',
         equipment: 'Smith Machine',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 15),
     Exercise(
         id: 'smith_machine_seated_calf_raise',
@@ -347,7 +347,7 @@ class ExerciseLibrary {
         muscleGroup: 'Legs',
         primaryMuscle: 'Calves',
         equipment: 'Smith Machine',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 15),
 
     // ══════════════════════════════════════════════════════
@@ -363,7 +363,7 @@ class ExerciseLibrary {
         muscleGroup: 'Pecs',
         primaryMuscle: 'Pectorals',
         equipment: 'Barbell, Bench',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 8),
     Exercise(
         id: 'dumbbell_bench_press',
@@ -515,7 +515,7 @@ class ExerciseLibrary {
         muscleGroup: 'Shoulders',
         primaryMuscle: 'Front Delts',
         equipment: 'Dumbbell',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 10),
     Exercise(
         id: 'shoulder_press_machine',
@@ -663,7 +663,7 @@ class ExerciseLibrary {
         muscleGroup: 'Lats',
         primaryMuscle: 'Latissimus Dorsi',
         equipment: 'Pull-up Bar',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 8),
     Exercise(
         id: 'narrow_grip_pull_up',
@@ -775,7 +775,7 @@ class ExerciseLibrary {
         muscleGroup: 'Back',
         primaryMuscle: 'Upper Back',
         equipment: 'Barbell',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 8),
     Exercise(
         id: 'dumbbell_single_arm_row',
@@ -815,7 +815,7 @@ class ExerciseLibrary {
         muscleGroup: 'Back',
         primaryMuscle: 'Upper Back',
         equipment: 'Smith Machine',
-        defaultSets: 4,
+        defaultSets: 3,
         defaultReps: 10),
     Exercise(
         id: 'cable_cross_row',
@@ -1075,7 +1075,7 @@ class WorkoutData {
       category: WorkoutCategory.lowerBody,
       number: 1,
       exercises: [
-        _we('hip_thrust_machine', 4, 10, 0),
+        _we('hip_thrust_machine', 3, 10, 0),
         _we('barbell_romanian_deadlift', 3, 10, 1),
         _we('dumbbell_bulgarian_split_squat', 3, 10, 2),
         _we('seated_leg_curl', 3, 12, 3),
@@ -1089,12 +1089,12 @@ class WorkoutData {
       category: WorkoutCategory.lowerBody,
       number: 2,
       exercises: [
-        _we('barbell_squat', 4, 8, 0),
+        _we('barbell_squat', 3, 8, 0),
         _we('leg_press_wide', 3, 12, 1),
         _we('smith_machine_deficit_split_squat', 3, 10, 2),
         _we('seated_leg_extension', 3, 12, 3),
         _we('dumbbell_reverse_lunge', 3, 10, 4),
-        _we('smith_machine_standing_calf_raise', 4, 15, 5),
+        _we('smith_machine_standing_calf_raise', 3, 15, 5),
       ],
     ),
     Workout(
@@ -1103,10 +1103,10 @@ class WorkoutData {
       category: WorkoutCategory.push,
       number: 1,
       exercises: [
-        _we('barbell_bench_press', 4, 8, 0),
+        _we('barbell_bench_press', 3, 8, 0),
         _we('incline_dumbbell_press', 3, 10, 1),
         _we('crossover_chest_fly', 3, 12, 2),
-        _we('seated_dumbbell_shoulder_press', 4, 10, 3),
+        _we('seated_dumbbell_shoulder_press', 3, 10, 3),
         _we('cable_rope_pushdown', 3, 12, 4),
         _we('dumbbell_skull_crusher', 3, 12, 5),
       ],
@@ -1117,8 +1117,8 @@ class WorkoutData {
       category: WorkoutCategory.pull,
       number: 1,
       exercises: [
-        _we('wide_grip_pull_up', 4, 8, 0),
-        _we('barbell_bent_over_row', 4, 8, 1),
+        _we('wide_grip_pull_up', 3, 8, 0),
+        _we('barbell_bent_over_row', 3, 8, 1),
         _we('cable_seated_row', 3, 12, 2),
         _we('cable_face_pull', 3, 15, 3),
         _we('barbell_bicep_curl', 3, 12, 4),
@@ -1131,8 +1131,8 @@ class WorkoutData {
       category: WorkoutCategory.fullBody,
       number: 1,
       exercises: [
-        _we('barbell_squat', 4, 8, 0),
-        _we('barbell_bench_press', 4, 8, 1),
+        _we('barbell_squat', 3, 8, 0),
+        _we('barbell_bench_press', 3, 8, 1),
         _we('barbell_bent_over_row', 3, 10, 2),
         _we('seated_dumbbell_shoulder_press', 3, 10, 3),
         _we('seated_leg_curl', 3, 12, 4),
@@ -1145,10 +1145,10 @@ class WorkoutData {
       category: WorkoutCategory.push,
       number: 2,
       exercises: [
-        _we('barbell_bench_press', 4, 8, 0),
+        _we('barbell_bench_press', 3, 8, 0),
         _we('incline_barbell_press', 3, 10, 1),
         _we('pec_deck_chest_fly', 3, 12, 2),
-        _we('seated_dumbbell_shoulder_press', 4, 10, 3),
+        _we('seated_dumbbell_shoulder_press', 3, 10, 3),
         _we('alternating_dumbbell_front_raise', 3, 12, 4),
         _we('cable_rope_pushdown', 3, 12, 5),
         _we('barbell_skull_crusher', 3, 12, 6),
@@ -1160,8 +1160,8 @@ class WorkoutData {
       category: WorkoutCategory.pull,
       number: 2,
       exercises: [
-        _we('wide_grip_pull_up', 4, 8, 0),
-        _we('barbell_bent_over_row', 4, 8, 1),
+        _we('wide_grip_pull_up', 3, 8, 0),
+        _we('barbell_bent_over_row', 3, 8, 1),
         _we('cable_pullover', 3, 12, 2),
         _we('cable_face_pull', 3, 15, 3),
         _we('dumbbell_lateral_raise', 3, 15, 4),

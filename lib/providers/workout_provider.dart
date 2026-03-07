@@ -17,6 +17,9 @@ class WorkoutProvider extends ChangeNotifier {
   // Superset pairs: each entry is a list of two indices that form a superset
   List<List<int>> _supersetPairs = [];
 
+  // Snapshot of exercises at load time (for change detection)
+  String _initialExercisesSnapshot = '';
+
   // Exercise library selections (id -> count)
   final Map<String, int> _exerciseSelections = {};
 
@@ -46,6 +49,24 @@ class WorkoutProvider extends ChangeNotifier {
 
   List<Map<String, dynamic>> get savedWorkouts =>
       List.unmodifiable(_savedWorkouts);
+
+  /// Whether the current exercises differ from the initial snapshot
+  bool get hasUnsavedChanges {
+    if (_initialExercisesSnapshot.isEmpty) return _customExercises.isNotEmpty;
+    return _currentExercisesFingerprint() != _initialExercisesSnapshot;
+  }
+
+  String _currentExercisesFingerprint() {
+    final buf = StringBuffer();
+    for (final we in _customExercises) {
+      buf.write('${we.exercise.id}|${we.sets}|${we.reps}|${we.order};');
+    }
+    // Include superset pairs
+    for (final pair in _supersetPairs) {
+      buf.write('ss:${pair[0]},${pair[1]};');
+    }
+    return buf.toString();
+  }
 
   List<Workout> get presetWorkouts => _cachedPresetWorkouts.isEmpty
       ? WorkoutData.presetWorkouts
@@ -163,6 +184,38 @@ class WorkoutProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Update an existing saved workout in the DB
+  Future<bool> updateExistingWorkoutInDB({
+    required int workoutId,
+    required String name,
+    String type = 'my_own',
+    String? category,
+  }) async {
+    if (_customExercises.isEmpty) return false;
+    final exercisesList = _customExercises
+        .map((we) => {
+              'exercise_id': we.exercise.id,
+              'exercise_name': we.exercise.name,
+              'sets': we.sets,
+              'reps': we.reps,
+              'order': we.order,
+              'superset_group': _getSupersetGroupForIndex(we.order),
+            })
+        .toList();
+
+    await _db.updateCustomWorkout(
+      workoutId,
+      name,
+      exercisesList,
+      type: type,
+      category: category,
+    );
+
+    _savedWorkouts = await _db.getSavedWorkouts();
+    notifyListeners();
+    return true;
+  }
+
   int? _getSupersetGroupForIndex(int index) {
     for (int i = 0; i < _supersetPairs.length; i++) {
       if (_supersetPairs[i].contains(index)) return i;
@@ -191,12 +244,63 @@ class WorkoutProvider extends ChangeNotifier {
   void loadPresetWorkoutForEditing(Workout workout) {
     _editingWorkoutId = workout.id;
     _customExercises = workout.exercises.map((we) => we.copyWith()).toList();
+    _supersetPairs = [];
+    _initialExercisesSnapshot = _currentExercisesFingerprint();
+    notifyListeners();
+  }
+
+  /// Load saved workout exercises (from JSON) into customExercises for editing
+  /// [savedWorkoutId] is the DB ID of the saved workout being edited
+  /// [savedWorkoutName] is the name of the saved workout being edited
+  int? _editingSavedWorkoutId;
+  int? get editingSavedWorkoutId => _editingSavedWorkoutId;
+  String? _editingSavedWorkoutName;
+  String? get editingSavedWorkoutName => _editingSavedWorkoutName;
+  String? _editingSavedWorkoutType;
+  String? get editingSavedWorkoutType => _editingSavedWorkoutType;
+
+  void loadSavedWorkoutForEditing(
+    List<Map<String, dynamic>> exercisesList, {
+    int? savedWorkoutId,
+    String? savedWorkoutName,
+    String? savedWorkoutType,
+  }) {
+    _editingWorkoutId = null;
+    _editingSavedWorkoutId = savedWorkoutId;
+    _editingSavedWorkoutName = savedWorkoutName;
+    _editingSavedWorkoutType = savedWorkoutType;
+    _customExercises = [];
+    _supersetPairs = [];
+    int order = 0;
+
+    for (final ex in exercisesList) {
+      final exerciseId = ex['exercise_id']?.toString() ?? '';
+      final exerciseName = (ex['exercise_name'] ?? 'Unknown').toString();
+      final sets = (ex['sets'] as int?) ?? 3;
+      final reps = (ex['reps'] as int?) ?? 10;
+
+      // Try to find from library, otherwise create a basic exercise
+      Exercise? exercise = ExerciseLibrary.findById(exerciseId);
+      exercise ??= Exercise(id: exerciseId, name: exerciseName);
+
+      _customExercises.add(WorkoutExercise(
+        exercise: exercise,
+        sets: sets,
+        reps: reps,
+        order: order++,
+      ));
+    }
+    _initialExercisesSnapshot = _currentExercisesFingerprint();
     notifyListeners();
   }
 
   /// Clear editing state (used when building a brand new custom workout)
   void clearEditingState() {
     _editingWorkoutId = null;
+    _editingSavedWorkoutId = null;
+    _editingSavedWorkoutName = null;
+    _editingSavedWorkoutType = null;
+    _initialExercisesSnapshot = '';
   }
 
   /// Update a preset workout's exercises in-memory (after editing)
@@ -259,12 +363,62 @@ class WorkoutProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Add a single exercise to the existing custom workout
+  void addExercisesToCustom(List<Exercise> exercises) {
+    int order = _customExercises.length;
+    for (final exercise in exercises) {
+      _customExercises.add(WorkoutExercise(
+        exercise: exercise,
+        sets: exercise.defaultSets,
+        reps: exercise.defaultReps,
+        order: order++,
+      ));
+    }
+    notifyListeners();
+  }
+
   // Update exercise in custom workout
   void updateCustomExercise(int index, {int? sets, int? reps}) {
     if (index >= 0 && index < _customExercises.length) {
       _customExercises[index] = _customExercises[index].copyWith(
         sets: sets,
         reps: reps,
+      );
+
+      // Fix 4: Sync set count to superset partner
+      if (sets != null) {
+        final partner = getSupersetPartner(index);
+        if (partner != null &&
+            partner >= 0 &&
+            partner < _customExercises.length) {
+          _customExercises[partner] =
+              _customExercises[partner].copyWith(sets: sets);
+        }
+      }
+
+      notifyListeners();
+    }
+  }
+
+  // Remove exercise from custom workout
+  void removeCustomExercise(int index) {
+    if (index >= 0 && index < _customExercises.length) {
+      _customExercises.removeAt(index);
+      // Clean up superset pairs that referenced this index
+      _supersetPairs.removeWhere((pair) => pair.contains(index));
+      // Shift down any pair indices above the removed index
+      _supersetPairs = _supersetPairs.map((pair) {
+        return pair.map((i) => i > index ? i - 1 : i).toList();
+      }).toList();
+      notifyListeners();
+    }
+  }
+
+  // Replace exercise at index (keeps sets/reps)
+  void replaceCustomExercise(int index, Exercise newExercise) {
+    if (index >= 0 && index < _customExercises.length) {
+      _customExercises[index] = _customExercises[index].copyWith(
+        exercise: newExercise,
       );
       notifyListeners();
     }
@@ -446,6 +600,17 @@ class WorkoutProvider extends ChangeNotifier {
         _supersetPairs.add([lower, higher]);
       }
     }
+
+    // Sync set counts to the lower of the two
+    final pairLower = indexA < indexB ? indexA : indexB;
+    final setsA = _customExercises[pairLower].sets;
+    final setsB = _customExercises[pairLower + 1].sets;
+    final minSets = setsA < setsB ? setsA : setsB;
+    _customExercises[pairLower] =
+        _customExercises[pairLower].copyWith(sets: minSets);
+    _customExercises[pairLower + 1] =
+        _customExercises[pairLower + 1].copyWith(sets: minSets);
+
     notifyListeners();
   }
 

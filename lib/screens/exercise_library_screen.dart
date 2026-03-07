@@ -1,6 +1,7 @@
 import 'package:colossus_pt/providers/workout_provider.dart';
 import 'package:colossus_pt/screens/exercise_config_screen.dart';
 import 'package:colossus_pt/theme.dart';
+import 'package:colossus_pt/widgets/feedback_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/exercise.dart';
@@ -27,9 +28,20 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.pop(context),
+        leadingWidth: 96,
+        leading: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.pest_control,
+                  color: ColossusTheme.primaryColor),
+              onPressed: () =>
+                  FeedbackHelper.showFeedbackMenu(context, 'Exercise Library'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_back_ios),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
         ),
         title: const Text(
           'EXERCISE LIBRARY',
